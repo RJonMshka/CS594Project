@@ -21,11 +21,11 @@ window_size = {
 }
 
 
-if sys.argv[0] in window_size:
+if len(sys.argv) >=1 and sys.argv[0] in window_size:
     rebalance_window = sys.argv[0]
     validation_window = sys.argv[0]
     
-if sys.argv[1] == "True":
+if len(sys.argv) >=2 and sys.argv[1] == "True":
     is_dynamic = True
 
 data = preprocess_data()

@@ -6,7 +6,7 @@ from gym.utils import seeding
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from env_config import *
+from environments.env_config import *
 
 class ValidationEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
