@@ -7,7 +7,6 @@ stable-baselines[mpi]
 tensorflow==1.15.4
 # plot
 matplotlib
-copy
 
 
 
