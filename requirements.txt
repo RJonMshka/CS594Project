@@ -5,9 +5,8 @@ scikit-learn
 gym
 stable-baselines[mpi]
 tensorflow==1.15.4
-joblib==0.15.1
 # plot
-matplotlib==3.2.1
+matplotlib
 copy
 
 
