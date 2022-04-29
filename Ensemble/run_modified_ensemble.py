@@ -5,6 +5,7 @@ import os
 from preprocessing import *
 from config import *
 from models import *
+from dataPlotting import *
 
 # default window sizes
 rebalance_window = 63
@@ -39,11 +40,14 @@ print(data.size)
 # unique_trade_date needs to start from 2015/10/01 for validation purpose
 unique_trade_date = data[(data.datadate > 20151001)&(data.datadate <= 20200707)].datadate.unique()
 
-run_modified_ensemble(
+model_used, a2c_list, ppo_list, td3_list = run_modified_ensemble(
     df = data,
     unique_trade_date = unique_trade_date,
     rebalance_window = rebalance_window,
     validation_window = validation_window,
     dynamic_models = is_dynamic
 )
+
+# plotting and saving results
+plotAndSaveResults(model_used, a2c_list, ppo_list, td3_list, rebalance_window, validation_window)
 
