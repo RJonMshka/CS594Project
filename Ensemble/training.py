@@ -6,7 +6,7 @@ from gym.utils import seeding
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from environments.env_config import *
+from env_config import *
 
 class TrainingEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
@@ -76,7 +76,6 @@ class TrainingEnv(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('results/account_value_train.png')
             plt.close()
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):(STOCK_DIM*2+1)]))

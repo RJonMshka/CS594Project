@@ -6,22 +6,21 @@ from gym.utils import seeding
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from environments.env_config import *
+from env_config import *
 
-class TradingEnv(gym.Env):
+class ValidationEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
-    
-    def __init__(self, df,day = 0,turbulence_threshold=140 ,initial=True, previous_state=[], model_name='', iteration=''):
+
+    def __init__(self, df, day = 0, turbulence_threshold=140, iteration=''):
         self.day = day
         self.df = df
-        self.initial = initial
-        self.previous_state = previous_state
         self.action_space = spaces.Box(low = -1, high = 1,shape = (STOCK_DIM,)) 
         self.observation_space = spaces.Box(low=0, high=np.inf, shape = (OBS_SHAPE_DIM,))
         self.data = self.df.loc[self.day,:]
         self.terminal = False     
         self.turbulence_threshold = turbulence_threshold
+        # initalize state
         self.state = [INITIAL_ACCOUNT_BALANCE] + \
                       self.data.adjcp.values.tolist() + \
                       [0]*STOCK_DIM + \
@@ -37,8 +36,9 @@ class TradingEnv(gym.Env):
         # memorize all the total balance change
         self.asset_memory = [INITIAL_ACCOUNT_BALANCE]
         self.rewards_memory = []
+        #self.reset()
         self._seed()
-        self.model_name=model_name        
+        
         self.iteration=iteration
 
 
@@ -96,36 +96,44 @@ class TradingEnv(gym.Env):
 
         if self.terminal:
             plt.plot(self.asset_memory,'r')
-            plt.savefig('results/account_value_trade_{}_{}.png'.format(self.model_name, self.iteration))
+            plt.savefig('results/account_value_validation_{}.png'.format(self.iteration))
             plt.close()
             df_total_value = pd.DataFrame(self.asset_memory)
-            df_total_value.to_csv('results/account_value_trade_{}_{}.csv'.format(self.model_name, self.iteration))
+            df_total_value.to_csv('results/account_value_validation_{}.csv'.format(self.iteration))
             end_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):(STOCK_DIM*2+1)]))
-            print("previous_total_asset:{}".format(self.asset_memory[0]))           
+            #print("previous_total_asset:{}".format(self.asset_memory[0]))           
 
-            print("end_total_asset:{}".format(end_total_asset))
-            print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):(STOCK_DIM*2+1)]))- self.asset_memory[0] ))
-            print("total_cost: ", self.cost)
-            print("total trades: ", self.trades)
+            #print("end_total_asset:{}".format(end_total_asset))
+            #print("total_reward:{}".format(self.state[0]+sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):61]))- self.asset_memory[0] ))
+            #print("total_cost: ", self.cost)
+            #print("total trades: ", self.trades)
 
             df_total_value.columns = ['account_value']
             df_total_value['daily_return']=df_total_value.pct_change(1)
             sharpe = (4**0.5)*df_total_value['daily_return'].mean()/ \
                   df_total_value['daily_return'].std()
-            print("Sharpe: ",sharpe)
+            #print("Sharpe: ",sharpe)
             
-            df_rewards = pd.DataFrame(self.rewards_memory)
-            df_rewards.to_csv('results/account_rewards_trade_{}_{}.csv'.format(self.model_name, self.iteration))    
+            #df_rewards = pd.DataFrame(self.rewards_memory)
+            #df_rewards.to_csv('results/account_rewards_trade_{}.csv'.format(self.iteration))
+            
+            # print('total asset: {}'.format(self.state[0]+ sum(np.array(self.state[1:29])*np.array(self.state[29:]))))
+            #with open('obs.pkl', 'wb') as f:  
+            #    pickle.dump(self.state, f)
+            
             return self.state, self.reward, self.terminal,{}
 
         else:
+            # print(np.array(self.state[1:29]))
+
             actions = actions * HMAX_NORMALIZE
+            #actions = (actions.astype(int))
             if self.turbulence>=self.turbulence_threshold:
                 actions=np.array([-HMAX_NORMALIZE]*STOCK_DIM)
-                
             begin_total_asset = self.state[0]+ \
             sum(np.array(self.state[1:(STOCK_DIM+1)])*np.array(self.state[(STOCK_DIM+1):(STOCK_DIM*2+1)]))
+            #print("begin_total_asset:{}".format(begin_total_asset))
             
             argsort_actions = np.argsort(actions)
             
@@ -133,14 +141,19 @@ class TradingEnv(gym.Env):
             buy_index = argsort_actions[::-1][:np.where(actions > 0)[0].shape[0]]
 
             for index in sell_index:
+                # print('take sell action'.format(actions[index]))
                 self._sell_stock(index, actions[index])
 
             for index in buy_index:
+                # print('take buy action: {}'.format(actions[index]))
                 self._buy_stock(index, actions[index])
 
             self.day += 1
             self.data = self.df.loc[self.day,:]         
             self.turbulence = self.data['turbulence'].values[0]
+            #print(self.turbulence)
+            #load next state
+            # print("stock_shares:{}".format(self.state[29:]))
             self.state =  [self.state[0]] + \
                     self.data.adjcp.values.tolist() + \
                     list(self.state[(STOCK_DIM+1):(STOCK_DIM*2+1)]) + \
@@ -160,46 +173,26 @@ class TradingEnv(gym.Env):
             
             self.reward = self.reward*REWARD_SCALING
 
-
         return self.state, self.reward, self.terminal, {}
 
     def reset(self):  
-        if self.initial:
-            self.asset_memory = [INITIAL_ACCOUNT_BALANCE]
-            self.day = 0
-            self.data = self.df.loc[self.day,:]
-            self.turbulence = 0
-            self.cost = 0
-            self.trades = 0
-            self.terminal = False 
-            self.rewards_memory = []
-            #initiate state
-            self.state = [INITIAL_ACCOUNT_BALANCE] + \
-                          self.data.adjcp.values.tolist() + \
-                          [0]*STOCK_DIM + \
-                          self.data.macd.values.tolist() + \
-                          self.data.rsi.values.tolist()  + \
-                          self.data.cci.values.tolist()  + \
-                          self.data.adx.values.tolist() 
-        else:
-            previous_total_asset = self.previous_state[0]+ \
-            sum(np.array(self.previous_state[1:(STOCK_DIM+1)])*np.array(self.previous_state[(STOCK_DIM+1):(STOCK_DIM*2+1)]))
-            self.asset_memory = [previous_total_asset]
-            self.day = 0
-            self.data = self.df.loc[self.day,:]
-            self.turbulence = 0
-            self.cost = 0
-            self.trades = 0
-            self.terminal = False 
-            self.rewards_memory = []
-            # initialize state
-            self.state = [ self.previous_state[0]] + \
-                          self.data.adjcp.values.tolist() + \
-                          self.previous_state[(STOCK_DIM+1):(STOCK_DIM*2+1)]+ \
-                          self.data.macd.values.tolist() + \
-                          self.data.rsi.values.tolist()  + \
-                          self.data.cci.values.tolist()  + \
-                          self.data.adx.values.tolist() 
+        self.asset_memory = [INITIAL_ACCOUNT_BALANCE]
+        self.day = 0
+        self.data = self.df.loc[self.day,:]
+        self.turbulence = 0
+        self.cost = 0
+        self.trades = 0
+        self.terminal = False 
+        #self.iteration=self.iteration
+        self.rewards_memory = []
+        #initiate state
+        self.state = [INITIAL_ACCOUNT_BALANCE] + \
+                      self.data.adjcp.values.tolist() + \
+                      [0]*STOCK_DIM + \
+                      self.data.macd.values.tolist() + \
+                      self.data.rsi.values.tolist()  + \
+                      self.data.cci.values.tolist()  + \
+                      self.data.adx.values.tolist() 
             
         return self.state
     

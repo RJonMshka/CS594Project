@@ -12,9 +12,9 @@ from stable_baselines.common.vec_env import DummyVecEnv
 from config import *
 from preprocessing import *
 
-from environments.trading import TradingEnv
-from environments.training import TrainingEnv
-from environments.validation import ValidationEnv
+from trading import TradingEnv
+from training import TrainingEnv
+from validation import ValidationEnv
 
 def train_A2C(env_train, model_name, timesteps=25000):
     start = time.time()
